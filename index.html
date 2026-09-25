@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rethinking Post-Training for Expressive Zero-Shot Text-to-Speech</title>
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --panel: rgba(255, 252, 245, 0.92);
+        --panel-strong: #fffdf8;
+        --primary: #3157d5;
+        --primary-deep: #18358f;
+        --secondary: #45b997;
+        --secondary-deep: #16745c;
+        --accent: #ed765c;
+        --text: #182b3a;
+        --muted: #607078;
+        --line: rgba(24, 43, 58, 0.16);
+        --shadow: 0 24px 55px rgba(37, 53, 65, 0.13);
+        --green-soft: #e7f6ef;
+        --blue-soft: #eaf0ff;
+        --radius: 22px;
+      }
+
+      * { box-sizing: border-box; }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 8% 0%, rgba(49, 87, 213, 0.16), transparent 25%),
+          radial-gradient(circle at 92% 88%, rgba(69, 185, 151, 0.18), transparent 28%),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 28px 22px 80px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0 18px;
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: rgba(92, 168, 216, 0.08);
+        border: 1px solid rgba(92, 168, 216, 0.15);
+        color: var(--primary-deep);
+        font-weight: 600;
+      }
+
+      .hero {
+        padding: 32px 24px 18px;
+        background: linear-gradient(125deg, #172c82 0%, #3157d5 58%, #3d8fbe 100%);
+        border: 1px solid rgba(24, 53, 143, 0.3);
+        border-radius: 30px;
+        box-shadow: 0 28px 65px rgba(29, 48, 111, 0.24);
+        color: #fffdf8;
+      }
+
+      .hero h1 {
+        margin: 18px 0 14px;
+        font-size: clamp(1.8rem, 2.2vw, 3.2rem);
+        line-height: 1.08;
+        letter-spacing: -0.05em;
+        max-width: 1040px;
+      }
+
+      .hero > .pill {
+        background: rgba(255, 253, 248, 0.14);
+        border-color: rgba(255, 253, 248, 0.28);
+        color: #fffdf8;
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 1100px;
+        font-size: 0.98rem;
+        line-height: 1.72;
+        color: rgba(255, 253, 248, 0.82);
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 0.9fr;
+        gap: 25px;
+        align-items: start;
+        margin-top: 26px;
+      }
+
+      .stat-panel {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+        gap: 18px;
+      }
+
+      .stat {
+        background: rgba(255, 253, 248, 0.96);
+        border: 1px solid rgba(255, 253, 248, 0.5);
+        border-radius: 18px;
+        padding: 18px 16px;
+        color: var(--text);
+      }
+
+      .stat .label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      .stat strong {
+        font-size: clamp(1.55rem, 2vw, 2.2rem);
+        letter-spacing: -0.05em;
+      }
+
+      .stat small {
+        display: block;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .summary-box {
+        background: linear-gradient(145deg, #d9f1e8, #f8f5e9);
+        border: 1px solid rgba(69, 185, 151, 0.35);
+        border-radius: 18px;
+        padding: 18px 20px;
+        color: var(--text);
+      }
+
+      .summary-box h3 {
+        margin: 0 0 12px;
+        font-size: 0.82rem;
+        letter-spacing: 0.1em;
+        color: var(--secondary-deep);
+        text-transform: uppercase;
+      }
+
+      .summary-box ul {
+        margin: 0;
+        padding-left: 18px;
+        line-height: 1.8;
+        color: var(--muted);
+      }
+
+      .section {
+        margin-top: 36px;
+        background: rgba(255, 252, 245, 0.84);
+        border: 1px solid rgba(24, 43, 58, 0.1);
+        border-radius: 30px;
+        padding: 25px 20px 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .section-header h2 {
+        margin: 0;
+        font-size: clamp(1.4rem, 2vw, 2rem);
+        letter-spacing: -0.04em;
+      }
+
+      .section-header .tag {
+        background: rgba(49, 87, 213, 0.09);
+        color: var(--primary-deep);
+        border: 1px solid rgba(49, 87, 213, 0.16);
+        padding: 7px 11px;
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .framework-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .framework-card {
+        padding: 18px 18px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(49, 87, 213, 0.14);
+        background: linear-gradient(180deg, #fffdf8, #eaf0ff);
+      }
+
+      .framework-card:nth-child(2) {
+        background: linear-gradient(180deg, #fffdf8, #e7f6ef);
+      }
+
+      .framework-card:nth-child(3) {
+        background: linear-gradient(180deg, #fffdf8, #fff0e9);
+      }
+
+      .framework-card h3 {
+        margin: 6px 0 10px;
+        font-size: 1.15rem;
+      }
+
+      .framework-card p {
+        margin: 0;
+        line-height: 1.72;
+        color: var(--muted);
+      }
+
+      .level {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(49, 87, 213, 0.1);
+        color: var(--primary-deep);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .results-grid {
+        display: grid;
+        grid-template-columns: 1.65fr 1fr;
+        gap: 18px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+        background: rgba(255, 253, 248, 0.82);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      th, td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+      }
+
+      th {
+        background: #eaf0ff;
+        color: var(--primary-deep);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      td:first-child {
+        text-align: left;
+        font-weight: 600;
+      }
+
+      .good {
+        background: rgba(126, 207, 164, 0.11);
+      }
+
+      .card-list {
+        display: grid;
+        gap: 16px;
+      }
+
+      .mini-card {
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #fffdf8, #eaf0ff);
+        border: 1px solid var(--line);
+      }
+
+      .mini-card strong {
+        display: block;
+        font-size: 1.2rem;
+        margin-bottom: 8px;
+      }
+
+      .mini-card span {
+        color: var(--muted);
+      }
+
+      .sample-group {
+        margin-top: 26px;
+      }
+
+      .group-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 26px 4px 14px;
+      }
+
+      .group-title h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        letter-spacing: -0.03em;
+      }
+
+      .sample-cards {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      .sample-card {
+        background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(234, 240, 255, 0.92));
+        border: 1px solid rgba(49, 87, 213, 0.14);
+        border-radius: 24px;
+        padding: 18px 18px 16px;
+        box-shadow: 0 20px 35px rgba(65, 126, 160, 0.08);
+      }
+
+      .sample-card .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 12px;
+      }
+
+      .sample-id {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--primary-deep);
+      }
+
+      .sample-badge {
+        padding: 6px 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(237, 118, 92, 0.25);
+        background: rgba(237, 118, 92, 0.1);
+        color: #b94c38;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .prompt-target-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .prompt-box, .target-box {
+        padding: 12px 13px;
+        border-radius: 14px;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        background: rgba(255, 253, 248, 0.9);
+        border: 1px solid rgba(49, 87, 213, 0.1);
+      }
+
+      .target-box { background: rgba(231, 246, 239, 0.9); }
+
+      .label {
+        display: block;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 7px;
+        font-weight: 700;
+      }
+
+      .stage-list {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(110px, 1fr));
+        gap: 10px;
+      }
+
+      .stage-item {
+        display: grid;
+        grid-template-rows: auto auto;
+        gap: 8px;
+        padding: 10px 8px 8px;
+        border-radius: 14px;
+        background: rgba(255, 253, 248, 0.76);
+        border: 1px solid rgba(49, 87, 213, 0.1);
+        min-height: 126px;
+      }
+
+      .stage-name {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.4;
+      }
+
+      .stage-item audio {
+        width: 100%;
+        height: 36px;
+      }
+
+      .footer-note {
+        margin-top: 30px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      @media (max-width: 1080px) {
+        .hero-grid, .results-grid, .sample-cards, .framework-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .stat-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .stage-item {
+          grid-template-columns: 1fr;
+        }
+
+        .section {
+          padding-left: 14px;
+          padding-right: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <span>Paper Demo</span>
+        <span class="pill">Qwen3-TTS • Post-Training Study</span>
+      </div>
+
+      <header class="hero">
+        <div class="pill">Expressive Zero-Shot Voice Cloning</div>
+        <h1>Rethinking Post-Training for Expressive Zero-Shot Text-to-Speech</h1>
+        <p>
+          Zero-shot voice cloning typically emphasizes preserving the timbre and prosodic characteristics of a reference speaker.
+          However, in real-world use, speech should adapt its delivery to the target text rather than remain tied to a fixed speaking style.
+          In this work, we formulate this problem as text-adaptive prosody synthesis for zero-shot voice cloning and study how post-training can endow a cloning model with this capability.
+        </p>
+
+        <div class="hero-grid">
+          <div class="stat-panel">
+            <div class="stat">
+              <span class="label">Emotion</span>
+              <strong>18.5 → 81.2</strong>
+              <small>Emergent emotion score</small>
+            </div>
+            <div class="stat">
+              <span class="label">Paralinguistics</span>
+              <strong>38.4 → 73.9</strong>
+              <small>Emergent prosody score</small>
+            </div>
+            <div class="stat">
+              <span class="label">Pipeline</span>
+              <strong>3 stages</strong>
+              <small>SFT/DPO → GSPO → OPSD</small>
+            </div>
+          </div>
+
+          <aside class="summary-box">
+            <h3>Four-step post-training pipeline</h3>
+            <ul>
+              <li>Stage 1: SFT (Exp 0), DPO (Exp 1), and DPO (Exp 2) build the cold-start expressive baseline.</li>
+              <li>Stage 2: GSPO continues from the Stage 1 checkpoint and jointly optimizes prosody, quality, intelligibility, and similarity.</li>
+              <li>Stage 3: OPSD uses the GSPO checkpoint for on-policy self-distillation.</li>
+            </ul>
+          </aside>
+        </div>
+      </header>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>Framework overview</h2>
+          <span class="tag">Post-training</span>
+        </div>
+
+        <div class="framework-grid">
+          <article class="framework-card">
+            <span class="level">Stage 1</span>
+            <h3>Direct Preference Optimization</h3>
+            <p>
+              Creates a cold start by aligning the model with text-appropriate expressive speech, improving prosodic controllability before more complex optimization.
+            </p>
+          </article>
+
+          <article class="framework-card">
+            <span class="level">Stage 2</span>
+            <h3>Group Sequence Policy Optimization</h3>
+            <p>
+              Jointly optimizes expressiveness, acoustic quality, intelligibility, and speaker similarity, stabilizing the end-to-end training signal.
+            </p>
+          </article>
+
+          <article class="framework-card">
+            <span class="level">Stage 3</span>
+            <h3>On-Policy Self-Distillation</h3>
+            <p>
+              Transfers expressive behavior from strong-reference conditions to weak-reference conditions, enabling self-improvement without external labels.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>Sample comparison</h2>
+          <span class="tag">Reference + synthesis</span>
+        </div>
+
+        <div id="sample-root"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>Main results</h2>
+          <span class="tag">Qwen3-TTS</span>
+        </div>
+
+        <div class="results-grid">
+          <table aria-label="Main results table">
+            <thead>
+              <tr>
+                <th>Model / Stage</th>
+                <th>Emotion (All)</th>
+                <th>Paraling. (All)</th>
+                <th>WER (EN)</th>
+                <th>SIM (EN)</th>
+                <th>UTMOS (EN)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base Model</td>
+                <td>18.5</td>
+                <td>38.4</td>
+                <td>1.23</td>
+                <td>0.72</td>
+                <td>3.35</td>
+              </tr>
+              <tr>
+                <td>SFT (Stage 1 Exp 0)</td>
+                <td>59.5</td>
+                <td>53.9</td>
+                <td>1.66</td>
+                <td>0.60</td>
+                <td>3.47</td>
+              </tr>
+              <tr>
+                <td>DPO (Stage 1 Exp 1)</td>
+                <td>30.6</td>
+                <td>43.3</td>
+                <td>2.17</td>
+                <td>0.66</td>
+                <td>3.27</td>
+              </tr>
+              <tr class="good">
+                <td>DPO (Stage 1 Exp 2)</td>
+                <td>66.8</td>
+                <td>57.6</td>
+                <td>1.65</td>
+                <td>0.55</td>
+                <td>3.09</td>
+              </tr>
+              <tr class="good">
+                <td>GSPO (Stage 2)</td>
+                <td>69.6</td>
+                <td>66.3</td>
+                <td>1.51</td>
+                <td>0.62</td>
+                <td>3.32</td>
+              </tr>
+              <tr class="good">
+                <td>OPSD (Stage 3)</td>
+                <td><strong>81.2</strong></td>
+                <td><strong>73.9</strong></td>
+                <td>1.55</td>
+                <td>0.59</td>
+                <td>3.36</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="card-list">
+            <div class="mini-card">
+              <strong>Emotion</strong>
+              <span>18.5 → 81.2, a +62.7 absolute gain, indicating clear emergence of expressive delivery.</span>
+            </div>
+            <div class="mini-card">
+              <strong>Paralinguistics</strong>
+              <span>38.4 → 73.9, showing that text-adaptive prosody is learned progressively through post-training.</span>
+            </div>
+            <div class="mini-card">
+              <strong>Takeaway</strong>
+              <span>Each stage successively improves text-to-speech expressivity while keeping acoustic stability and speaker fidelity in check.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-note">
+        English narration is used throughout the page. Audio samples are drawn from the corresponding prompt and synthesis set, and grouped by English, Chinese, and expressive scenarios.
+      </div>
+    </div>
+
+    <script src="demo-data.js"></script>
+    <script>
+      const STAGE_ORDER = [
+        'Reference',
+        'Qwen3-TTS',
+        'SFT (Stage 1 Exp 0)',
+        'DPO (Stage 1 Exp 1)',
+        'DPO (Stage 1 Exp 2)',
+        'GSPO (Stage 2)',
+        'OPSD (Stage 3)'
+      ];
+
+      const GROUP_LABELS = {
+        expr: 'Expressive cases',
+        en: 'English cases',
+        zh: 'Chinese cases'
+      };
+
+      const sampleRoot = document.getElementById('sample-root');
+
+      const renderStagePlayers = (sample) => {
+        const displayStages = [
+          { name: 'Reference', src: sample.prompt_wav },
+          { name: 'Qwen3-TTS', src: sample.files['Qwen3-TTS'] },
+          { name: 'SFT (Stage 1 Exp 0)', src: sample.files['SFT (Stage 1 Exp 0)'] },
+          { name: 'DPO (Stage 1 Exp 1)', src: sample.files['DPO (Stage 1 Exp 1)'] },
+          { name: 'DPO (Stage 1 Exp 2)', src: sample.files['DPO (Stage 1 Exp 2)'] },
+          { name: 'GSPO (Stage 2)', src: sample.files['GSPO (Stage 2)'] },
+          { name: 'OPSD (Stage 3)', src: sample.files['OPSD (Stage 3)'] }
+        ];
+
+        return displayStages.map(({ name, src }) => `
+          <div class="stage-item">
+            <div class="stage-name">${name}</div>
+            <audio controls preload="none" src="${src}"></audio>
+          </div>
+        `).join('');
+      };
+
+      const renderSamples = () => {
+        Object.entries(GROUP_LABELS).forEach(([groupKey, groupLabel]) => {
+          const groupSamples = samples.filter((s) => s.tab === groupKey);
+          const group = document.createElement('div');
+          group.className = 'sample-group';
+
+          const title = document.createElement('div');
+          title.className = 'group-title';
+          title.innerHTML = `<h3>${groupLabel}</h3><span class="tag">${groupSamples.length} samples</span>`;
+          group.appendChild(title);
+
+          const cards = document.createElement('div');
+          cards.className = 'sample-cards';
+
+          groupSamples.forEach((sample) => {
+            const card = document.createElement('article');
+            card.className = 'sample-card';
+            card.innerHTML = `
+              <div class="top">
+                <div class="sample-id">${sample.uid}</div>
+                <div class="sample-badge">${groupLabel}</div>
+              </div>
+
+              <div class="prompt-target-grid">
+                <div class="prompt-box">
+                  <span class="label">Prompt</span>
+                  ${sample.prompt}
+                </div>
+
+                <div class="target-box">
+                  <span class="label">Target text</span>
+                  ${sample.target}
+                </div>
+              </div>
+
+              <div class="stage-list">
+                ${renderStagePlayers(sample)}
+              </div>
+            `;
+            cards.appendChild(card);
+          });
+
+          group.appendChild(cards);
+          sampleRoot.appendChild(group);
+        });
+      };
+
+      renderSamples();
+    </script>
+  </body>
+</html>
