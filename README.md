@@ -12,11 +12,11 @@ Open http://localhost:8000 in a browser. The page must be served over HTTP so th
 
 ## Included samples
 
-The package contains the 30 samples shown by the page:
+The package contains the 25 samples shown by the page:
 
-- 10 expressive cases
+- 7 expressive cases
 - 10 English cases
-- 10 Chinese cases
+- 8 Chinese cases
 - Reference audio plus Qwen3-TTS, Stage 1 Exp 0/1/2, GSPO (Stage 2), and OPSD (Stage 3)
 
 The audio paths under `extracted/audio/` mirror the paths used by `demo-data.js`; no extra source dataset is required.
