@@ -45,6 +45,26 @@
         padding: 28px 22px 80px;
       }
 
+      .ai-notice {
+        background: linear-gradient(135deg, rgba(237, 118, 92, 0.12), rgba(237, 118, 92, 0.08));
+        border: 2px solid rgba(237, 118, 92, 0.35);
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        color: #b94c38;
+        font-size: 0.95rem;
+      }
+
+      .ai-notice::before {
+        content: "⚠";
+        font-size: 1.4rem;
+        flex-shrink: 0;
+      }
+
       .topbar {
         display: flex;
         justify-content: space-between;
@@ -426,6 +446,17 @@
         font-size: 0.85rem;
       }
 
+      .disclaimer {
+        margin-top: 40px;
+        padding: 20px 24px;
+        background: rgba(255, 252, 245, 0.6);
+        border: 1px solid rgba(24, 43, 58, 0.08);
+        border-radius: 16px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.7;
+      }
+
       @media (max-width: 1080px) {
         .hero-grid, .results-grid, .sample-cards, .framework-grid {
           grid-template-columns: 1fr;
@@ -450,6 +481,10 @@
   </head>
   <body>
     <div class="container">
+      <div class="ai-notice">
+        This page contains AI-generated content
+      </div>
+
       <div class="topbar">
         <span>Paper Demo</span>
         <span class="pill">Qwen3-TTS • Post-Training Study</span>
@@ -625,6 +660,10 @@
 
       <div class="footer-note">
         English narration is used throughout the page. Audio samples are drawn from the corresponding prompt and synthesis set, and grouped by English and Chinese scenarios.
+      </div>
+
+      <div class="disclaimer">
+        All audio samples on this page are AI-generated synthetic content produced by the post-trained models in this study. Any organization or individual using the synthetic audio on this page shall comply with applicable laws and regulations, fulfill their respective obligations when further generating or disseminating such content, and shall not use it for impersonation, fraud, or any other illegal or infringing purposes.
       </div>
     </div>
 
